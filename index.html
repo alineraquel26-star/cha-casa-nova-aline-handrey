@@ -1,1 +1,228 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chá de Casa Nova — Aline & Handrey</title><style>body{margin:0;background:#f7f3ee;color:#292522;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}header{text-align:center;padding:30px 16px 18px}h1{margin:0 0 6px}.wrap{max-width:900px;margin:auto;padding:0 16px 40px}.top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}.badge,.btn{border-radius:10px;padding:10px 13px}.badge{background:#eee5dc}.btn{border:0;background:#8a6a52;color:#fff;font-weight:600;cursor:pointer}.btn.gray{background:#eee5dc;color:#292522}.btn.red{background:#a65353}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.card,.box{background:#fff;border:1px solid #e7ddd3;border-radius:16px;padding:16px}.card h3{margin:0 0 6px}.price,small{color:#756d66}.card a{color:#8a6a52}.modal{display:none;position:fixed;inset:0;background:#0008;align-items:center;justify-content:center;padding:16px}.modal.on{display:flex}.box{width:min(420px,100%)}input{display:block;width:100%;box-sizing:border-box;padding:12px;border:1px solid #e7ddd3;border-radius:10px;margin:8px 0 12px;font-size:16px}.admin{display:none}.admin.on{display:block}.section{background:#fff;border:1px solid #e7ddd3;border-radius:16px;padding:16px;margin:12px 0}.notice{padding:10px;background:#f4eee8;border-radius:10px;margin:8px 0}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.hidden{display:none}</style></head><body><header><h1>🏠 Chá de Casa Nova</h1><div>Aline & Handrey</div><div>Escolha seu presente e reserve 🤎</div></header><main class="wrap"><div class="top"><span class="badge" id="count">Carregando...</span><button class="btn gray" onclick="adminOpen()">🔐 Administrador</button></div><section id="public"><div id="grid" class="grid"></div></section><section id="admin" class="admin"><div class="section" id="login"><h2>🔐 Administradora</h2><input id="email" type="email" placeholder="E-mail"><input id="pass" type="password" placeholder="Senha"><button class="btn" onclick="login()">Entrar</button><p id="loginMsg"></p></div><div id="panel" class="hidden"><div class="top"><b>Painel de presentes</b><button class="btn gray" onclick="logout()">Sair</button></div><div class="section"><h3>Adicionar presente</h3><input id="nn" placeholder="Nome"><input id="np" placeholder="Preço"><input id="nu" placeholder="Link"><button class="btn" onclick="addGift()">Adicionar</button></div><div class="section"><h3>Presentes</h3><div id="ag"></div></div><div class="section"><h3>Reservas</h3><div id="ar"></div></div></div></section></main><div id="modal" class="modal"><div class="box"><h2>🎁 Reservar presente</h2><p id="mg"></p><input id="gn" maxlength="80" placeholder="Seu nome"><div class="row"><button class="btn" onclick="reserve()">Confirmar</button><button class="btn gray" onclick="closeM()">Cancelar</button></div><p id="rm"></p></div></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>const U='https://tawgiixpqirmeqwstiyw.supabase.co',K='sb_publishable_D2hYVxnUZ09TfpqWuq8p1w_CH2a6-zh',S=supabase.createClient(U,K);let G=[],R=[],sel=null;const $=id=>document.getElementById(id),E=x=>String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));async function load(){let a=await S.from('gifts').select('*').eq('active',true).order('created_at');G=a.data||[];let b=await S.from('reservations').select('item_id');R=b.data||[];render()}function render(){let z=new Set(R.map(x=>x.item_id));$('count').textContent=`${G.filter(g=>!z.has(g.id)).length} disponíveis de ${G.length}`;$('grid').innerHTML=G.map(g=>`<div class="card"><h3>${E(g.name)}</h3><div class="price">${E(g.price)}</div>${g.url?`<a href="${E(g.url)}" target="_blank">Ver presente ↗</a><br>`:''}${z.has(g.id)?'<b style="color:#5d7b5d">✓ Já escolhido</b>':`<button class="btn" onclick="openM('${g.id}')">Reservar presente</button>`}</div>`).join('')||'<div class="box">Nenhum presente cadastrado.</div>'}function openM(id){sel=G.find(g=>g.id===id);$('mg').textContent=sel.name;$('gn').value='';$('rm').textContent='';$('modal').classList.add('on')}function closeM(){$('modal').classList.remove('on')}async function reserve(){let n=$('gn').value.trim();if(!n)return $('rm').textContent='Digite seu nome.';let q=await S.from('reservations').insert({item_id:sel.id,item_name:sel.name,guest_name:n});if(q.error){$('rm').textContent='Esse presente já pode ter sido reservado. Atualize a página.';return}closeM();load()}function adminOpen(){$('public').classList.add('hidden');$('admin').classList.add('on');scrollTo(0,0)}async function login(){let q=await S.auth.signInWithPassword({email:$('email').value.trim(),password:$('pass').value});if(q.error)return $('loginMsg').textContent=q.error.message;$('login').classList.add('hidden');$('panel').classList.remove('hidden');loadAdmin()}async function logout(){await S.auth.signOut();$('login').classList.remove('hidden');$('panel').classList.add('hidden')}async function loadAdmin(){let a=await S.from('gifts').select('*').order('created_at');G=a.data||[];let b=await S.from('reservations').select('*').order('created_at',{ascending:false});R=b.data||[];$('ag').innerHTML=G.map(g=>`<div class="notice"><b>${E(g.name)}</b><br><small>${E(g.price)} · ${g.active?'Ativo':'Desativado'}</small><div class="row"><button class="btn gray" onclick="editG('${g.id}')">Editar</button><button class="btn gray" onclick="toggleG('${g.id}',${!g.active})">${g.active?'Desativar':'Ativar'}</button><button class="btn red" onclick="delG('${g.id}')">Excluir</button></div></div>`).join('')||'<small>Nenhum presente.</small>';$('ar').innerHTML=R.map(r=>`<div class="notice"><b>${E(r.item_name)}</b><br>Reservado por: ${E(r.guest_name)}<br><small>${new Date(r.created_at).toLocaleString('pt-BR')}</small><div class="row"><button class="btn red" onclick="delR('${r.id}')">Cancelar reserva</button></div></div>`).join('')||'<small>Nenhuma reserva.</small>'}async function addGift(){let n=$('nn').value.trim();if(!n)return alert('Informe o nome.');let q=await S.from('gifts').insert({name:n,price:$('np').value.trim(),url:$('nu').value.trim(),active:true});if(q.error)alert(q.error.message);else{$('nn').value=$('np').value=$('nu').value='';loadAdmin();load()}}async function editG(id){let g=G.find(x=>x.id===id),n=prompt('Nome:',g.name);if(n===null)return;let p=prompt('Preço:',g.price||'');if(p===null)return;let u=prompt('Link:',g.url||'');if(u===null)return;let q=await S.from('gifts').update({name:n.trim(),price:p.trim(),url:u.trim()}).eq('id',id);if(q.error)alert(q.error.message);else{loadAdmin();load()}}async function toggleG(id,v){let q=await S.from('gifts').update({active:v}).eq('id',id);if(q.error)alert(q.error.message);else{loadAdmin();load()}}async function delG(id){if(!confirm('Excluir este presente?'))return;let q=await S.from('gifts').delete().eq('id',id);if(q.error)alert(q.error.message);else{loadAdmin();load()}}async function delR(id){if(!confirm('Cancelar esta reserva?'))return;let q=await S.from('reservations').delete().eq('id',id);if(q.error)alert(q.error.message);else{loadAdmin();load()}}load();</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chá de Casa Nova — Aline & Handrey</title>
+<style>
+:root{
+ --bg:#ffffff;--paper:#ffffff;--ink:#292929;--muted:#777;
+ --accent:#4a4a4a;--soft:#f7f7f5;--line:#e7e4df;
+ --gold:#a58b62;--ok:#66745f;--danger:#9a5555;
+ --shadow:0 10px 35px rgba(0,0,0,.055)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:#fff;color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+.wrap{max-width:1040px;margin:auto;padding:20px 18px 60px}
+.hero{
+ position:relative;overflow:hidden;text-align:center;background:#fff;
+ border:1px solid #eceae7;border-radius:2px;padding:48px 25px 42px;
+ box-shadow:var(--shadow);margin:10px 0 28px
+}
+.hero:before,.hero:after{content:"";position:absolute;background:#f5f3ef;z-index:0}
+.hero:before{width:190px;height:190px;left:-95px;top:-95px;border-radius:50%}
+.hero:after{width:150px;height:150px;right:-75px;bottom:-75px;border-radius:50%}
+.hero>*{position:relative;z-index:1}
+.hero>div:first-child{font-size:30px!important;letter-spacing:3px}
+.hero h1{font-family:Georgia,"Times New Roman",serif;font-size:36px;line-height:1.15;margin:9px 0 7px;font-weight:400;letter-spacing:.5px}
+.hero h2{font-family:Georgia,"Times New Roman",serif;font-size:21px;font-weight:400;margin:0 0 18px;color:#555}
+.hero p{max-width:700px;margin:0 auto;color:#777;line-height:1.75;font-size:15px}
+.controls{display:flex;gap:10px;align-items:center;margin:20px 0;flex-wrap:wrap}
+.controls input{flex:1;min-width:230px;padding:14px 16px;border:1px solid var(--line);border-radius:2px;background:#fff;color:var(--ink);font-size:15px;outline:none}
+.controls input:focus{border-color:#c9c1b6;box-shadow:0 0 0 3px #f4f1ec}
+button{border:0;border-radius:2px;padding:12px 17px;font-weight:700;cursor:pointer;transition:.18s}
+button:hover{transform:translateY(-1px)}
+.adminBtn{background:#292929;color:#fff}
+.back{background:#f1efeb;color:#444}
+.primary{background:#444;color:#fff}
+.danger{background:#9a5555;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:16px}
+.card{background:#fff;border:1px solid #e8e5e1;border-radius:2px;padding:20px;box-shadow:0 5px 20px rgba(0,0,0,.035);min-height:190px;display:flex;flex-direction:column}
+.card h3{margin:0 0 9px;font-family:Georgia,"Times New Roman",serif;font-size:18px;font-weight:500;line-height:1.35}
+.price{font-weight:700;color:#8b7759;margin-bottom:13px;font-size:14px}
+.card p{margin:0 0 14px}
+.card a{color:#756449;text-decoration:none;border-bottom:1px solid #d9d0c2}
+.card button{width:100%;margin-top:auto;background:#333;color:#fff}
+.card.reserved{opacity:.6}
+.card.reserved button{background:#aaa;cursor:not-allowed}
+.msg{padding:12px;border-radius:2px;margin:12px 0;background:#f5f3ef;color:#555}
+.hidden{display:none!important}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.box{background:#fff;border-radius:2px;max-width:520px;width:100%;padding:26px;box-shadow:0 15px 50px rgba(0,0,0,.15)}
+.box h2{font-family:Georgia,"Times New Roman",serif;font-weight:400;margin-top:0}
+.box input,.box select{width:100%;padding:13px;border:1px solid var(--line);border-radius:2px;margin:7px 0 12px;font-size:16px;background:#fff}
+.actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.admin-list{margin-top:24px;background:#fff;border:1px solid #e8e5e1;padding:20px}
+.admin-list h2{font-family:Georgia,"Times New Roman",serif;font-weight:400}
+.admin-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding:13px 0}
+.admin-row:last-child{border-bottom:0}
+.small{font-size:13px;color:var(--muted)}
+@media(max-width:600px){
+ .wrap{padding:12px 12px 45px}
+ .hero{padding:38px 18px 34px}
+ .hero h1{font-size:29px}
+ .hero h2{font-size:20px}
+ .grid{grid-template-columns:1fr}
+ .controls input,.controls button{width:100%}
+ .admin-row{grid-template-columns:1fr}
+ .actions{justify-content:stretch}.actions button{flex:1}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<section id="publicPage">
+  <div class="hero">
+    <div style="font-size:34px">🏠✨</div>
+    <h1>Chá de Casa Nova</h1>
+    <h2>Aline & Handrey 🤎</h2>
+    <p>Como estamos começando nossa casa nova, fizemos uma listinha com muito carinho para quem quiser nos presentear. Escolha o item que quiser — o mais importante é ter você com a gente nesse momento especial. 🤍</p>
+  </div>
+  <div class="controls">
+    <input id="search" placeholder="🔎 Procurar um presente...">
+    <button class="adminBtn" onclick="showAdmin()">🔐 Administrador</button>
+  </div>
+  <div id="publicMsg" class="msg hidden"></div>
+  <div id="giftGrid" class="grid"></div>
+</section>
+
+<section id="adminPage" class="hidden">
+  <div class="hero">
+    <h1>🔐 Área do Administrador</h1>
+    <p>Gerencie os presentes e veja/cancele reservas.</p>
+  </div>
+  <div id="loginBox" class="box" style="margin:auto">
+    <h2>Entrar</h2>
+    <input id="email" type="email" placeholder="E-mail">
+    <input id="password" type="password" placeholder="Senha">
+    <div class="actions"><button class="back" onclick="showPublic()">Voltar</button><button class="primary" onclick="login()">Entrar</button></div>
+    <div id="loginMsg" class="msg hidden"></div>
+  </div>
+  <div id="adminPanel" class="hidden">
+    <div class="actions" style="justify-content:space-between;margin-bottom:15px">
+      <button class="back" onclick="showPublic()">← Site</button>
+      <button class="danger" onclick="logout()">Sair</button>
+    </div>
+    <div class="box">
+      <h2 id="formTitle">Adicionar presente</h2>
+      <input id="giftName" placeholder="Nome do presente">
+      <select id="giftRange"><option>R$20–40</option><option>R$41–60</option><option>R$61–80</option></select>
+      <input id="giftLink" placeholder="Link do produto (opcional)">
+      <div class="actions"><button class="back" onclick="clearForm()">Limpar</button><button class="primary" onclick="saveGift()">Salvar</button></div>
+      <div id="adminMsg" class="msg hidden"></div>
+    </div>
+    <div class="admin-list">
+      <h2>Presentes</h2><div id="adminGifts"></div>
+    </div>
+    <div class="admin-list">
+      <h2>Reservas</h2><div id="reservations"></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<div id="modal" class="modal hidden">
+ <div class="box">
+  <h2>🎁 Reservar presente</h2>
+  <p id="modalGift" class="small"></p>
+  <input id="guestName" placeholder="Seu nome">
+  <div class="actions"><button class="back" onclick="closeModal()">Cancelar</button><button class="primary" onclick="reserve()">Confirmar reserva</button></div>
+  <div id="reserveMsg" class="msg hidden"></div>
+ </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://tawgiixpqirmeqwstiyw.supabase.co";
+const SUPABASE_KEY="sb_publishable_D2hYVxnUZ09TfpqWuq8p1w_CH2a6-zh";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let gifts=[], reservedIds=new Set(), selectedGift=null, editingId=null;
+
+const $=id=>document.getElementById(id);
+function msg(id,text){$(id).textContent=text;$(id).classList.remove("hidden")}
+function hide(id){$(id).classList.add("hidden")}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+
+async function loadGifts(){
+ const {data,error}=await sb.from("gifts").select("*").eq("active",true).order("price_range").order("name");
+ if(error){msg("publicMsg","Não foi possível carregar os presentes. Verifique a configuração do Supabase.");return}
+ gifts=data||[];
+ const {data:r}=await sb.from("reservation_status").select("item_id");
+ reservedIds=new Set((r||[]).map(x=>String(x.item_id)));
+ renderPublic();
+}
+function renderPublic(){
+ const q=$("search").value.toLowerCase().trim();
+ $("giftGrid").innerHTML=gifts.filter(g=>g.name.toLowerCase().includes(q)).map(g=>{
+  const reserved=reservedIds.has(String(g.id));
+  return `<div class="card ${reserved?"reserved":""}"><h3>${esc(g.name)}</h3><div class="price">${esc(g.price_range||"")}</div>${g.link?`<p><a href="${esc(g.link)}" target="_blank" rel="noopener">Ver produto</a></p>`:""}<button ${reserved?"disabled":""} onclick="openModal('${g.id}')">${reserved?"🎁 Já reservado":"🎁 Reservar presente"}</button></div>`;
+ }).join("")||"<div class='msg'>Nenhum presente encontrado.</div>";
+}
+$("search").addEventListener("input",renderPublic);
+
+function openModal(id){selectedGift=gifts.find(g=>String(g.id)===String(id));if(!selectedGift)return;$("modalGift").textContent=selectedGift.name;$("guestName").value="";hide("reserveMsg");$("modal").classList.remove("hidden");$("guestName").focus()}
+function closeModal(){$("modal").classList.add("hidden")}
+async function reserve(){
+ const name=$("guestName").value.trim();
+ if(!name){msg("reserveMsg","Digite seu nome.");return}
+ if(!selectedGift)return;
+ const {error}=await sb.from("reservations").insert({item_id:selectedGift.id,item_name:selectedGift.name,guest_name:name});
+ if(error){msg("reserveMsg",error.code==="23505"?"Esse presente acabou de ser reservado por outra pessoa.":"Não foi possível reservar. Tente novamente.");return}
+ reservedIds.add(String(selectedGift.id));closeModal();renderPublic();
+ alert("Reserva realizada com sucesso! 🤎");
+}
+
+function showAdmin(){ $("publicPage").classList.add("hidden");$("adminPage").classList.remove("hidden");}
+function showPublic(){ $("adminPage").classList.add("hidden");$("publicPage").classList.remove("hidden");loadGifts();}
+async function login(){
+ const {error}=await sb.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
+ if(error){msg("loginMsg","E-mail ou senha inválidos.");return}
+ hide("loginMsg");showAdminPanel();
+}
+async function logout(){await sb.auth.signOut();$("adminPanel").classList.add("hidden");$("loginBox").classList.remove("hidden")}
+async function showAdminPanel(){ $("loginBox").classList.add("hidden");$("adminPanel").classList.remove("hidden");await loadAdmin()}
+async function loadAdmin(){await loadAdminGifts();await loadReservations()}
+async function loadAdminGifts(){
+ const {data,error}=await sb.from("gifts").select("*").order("price_range").order("name");
+ if(error){msg("adminMsg","Erro ao carregar presentes.");return}
+ $("adminGifts").innerHTML=(data||[]).map(g=>`<div class="admin-row"><div><b>${esc(g.name)}</b><div class="small">${esc(g.price_range||"")} ${g.active===false?"• INATIVO":""}</div></div><button class="back" onclick="editGift('${g.id}')">Editar</button><button class="danger" onclick="deleteGift('${g.id}')">Excluir</button></div>`).join("")||"<p>Nenhum presente.</p>";
+ gifts=data||gifts;
+}
+async function saveGift(){
+ const name=$("giftName").value.trim(), price_range=$("giftRange").value, link=$("giftLink").value.trim();
+ if(!name){msg("adminMsg","Informe o nome.");return}
+ let result;
+ if(editingId) result=await sb.from("gifts").update({name,price_range,link:link||null}).eq("id",editingId);
+ else result=await sb.from("gifts").insert({name,price_range,link:link||null,active:true});
+ if(result.error){msg("adminMsg","Erro ao salvar: "+result.error.message);return}
+ msg("adminMsg","Salvo com sucesso.");clearForm();await loadAdmin();await loadGifts();
+}
+function editGift(id){
+ const g=gifts.find(x=>String(x.id)===String(id));if(!g)return;
+ editingId=g.id;$("formTitle").textContent="Editar presente";$("giftName").value=g.name;$("giftRange").value=g.price_range||"R$20–40";$("giftLink").value=g.link||"";window.scrollTo({top:0,behavior:"smooth"});
+}
+function clearForm(){editingId=null;$("formTitle").textContent="Adicionar presente";$("giftName").value="";$("giftLink").value="";hide("adminMsg")}
+async function deleteGift(id){
+ if(!confirm("Excluir este presente?"))return;
+ const {error}=await sb.from("gifts").delete().eq("id",id);
+ if(error){msg("adminMsg","Não foi possível excluir: "+error.message);return}
+ await loadAdmin();await loadGifts();
+}
+async function loadReservations(){
+ const {data,error}=await sb.from("reservations").select("*").order("created_at",{ascending:false});
+ if(error){$("reservations").innerHTML="<p>Não foi possível carregar as reservas.</p>";return}
+ $("reservations").innerHTML=(data||[]).map(r=>`<div class="admin-row"><div><b>${esc(r.item_name||"Presente")}</b><div class="small">Reservado por: ${esc(r.guest_name||"")} • ${r.created_at?new Date(r.created_at).toLocaleString("pt-BR"):""}</div></div><button class="danger" onclick="cancelReservation('${r.id}')">Cancelar</button></div>`).join("")||"<p>Nenhuma reserva ainda.</p>";
+}
+async function cancelReservation(id){
+ if(!confirm("Cancelar esta reserva?"))return;
+ const {error}=await sb.from("reservations").delete().eq("id",id);
+ if(error){msg("adminMsg","Não foi possível cancelar: "+error.message);return}
+ await loadAdmin();await loadGifts();
+}
+sb.auth.getSession().then(({data})=>{if(data.session)showAdminPanel()});
+loadGifts();
+</script>
+</body>
+</html>
